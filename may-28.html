@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>May 28 - Graphical Physics Tasks</title>
+  <style>
+    body {
+      background-color: black;
+      margin: 0;
+      padding: 0;
+    }
+    canvas {
+      display: block;
+      margin: 20px auto;
+      background-color: black;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    // ============================
+    // Shared Utility Functions
+    // ============================
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function distance(p1, p2) {
+      const dx = p1[0] - p2[0];
+      const dy = p1[1] - p2[1];
+      return Math.hypot(dx, dy);
+    }
+
+    function drawCircle(ctx, center, radius) {
+      ctx.beginPath();
+      ctx.arc(center[0], center[1], radius, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    function vector(ctx, tail, head, arrowSize = 10) {
+      const [tailX, tailY] = tail;
+      const [headX, headY] = head;
+      ctx.beginPath();
+      ctx.moveTo(tailX, tailY);
+      ctx.lineTo(headX, headY);
+      ctx.stroke();
+
+      const dx = headX - tailX, dy = headY - tailY;
+      const mag = Math.hypot(dx, dy);
+      const Tx = dx / mag, Ty = dy / mag;
+      const Nx = -Ty, Ny = Tx;
+
+      const baseX = headX - Tx * arrowSize;
+      const baseY = headY - Ty * arrowSize;
+      const leftX = baseX + Nx * (arrowSize * 0.5);
+      const leftY = baseY + Ny * (arrowSize * 0.5);
+      const rightX = baseX - Nx * (arrowSize * 0.5);
+      const rightY = baseY - Ny * (arrowSize * 0.5);
+
+      ctx.beginPath();
+      ctx.moveTo(headX, headY);
+      ctx.lineTo(leftX, leftY);
+      ctx.lineTo(rightX, rightY);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawSpring(ctx, start, end, width = 10, pitch = 8) {
+      const [x0, y0] = start;
+      const [x1, y1] = end;
+
+      const dx = x1 - x0;
+      const dy = y1 - y0;
+      const length = Math.hypot(dx, dy);
+      const segments = Math.floor(length / pitch);
+      const angle = Math.atan2(dy, dx);
+
+      ctx.beginPath();
+      for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const x = x0 + dx * t;
+        const y = y0 + dy * t;
+        const offset = (i % 2 === 0 ? -1 : 1) * width / 2;
+        const px = x + offset * Math.sin(angle);
+        const py = y - offset * Math.cos(angle);
+        if (i === 0) {
+          ctx.moveTo(px, py);
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.stroke();
+    }
+
+    // ============================
+    // Task 1: FBD
+    // ============================
+    const canvas1 = document.createElement('canvas');
+    canvas1.width = 800;
+    canvas1.height = 800;
+    document.body.appendChild(canvas1);
+    const ctx1 = canvas1.getContext('2d');
+    ctx1.strokeStyle = 'white';
+    ctx1.fillStyle = 'white';
+    ctx1.lineWidth = 2;
+
+    const boxX = 300, boxY = 300, boxW = 200, boxH = 100;
+    ctx1.strokeRect(boxX, boxY, boxW, boxH);
+
+    const corners = [
+      [boxX, boxY],
+      [boxX + boxW, boxY],
+      [boxX + boxW, boxY + boxH],
+      [boxX, boxY + boxH]
+    ];
+
+    const cornerAngles = [
+      -3 * Math.PI / 4,
+      -1 * Math.PI / 4,
+       1 * Math.PI / 4,
+       3 * Math.PI / 4
+    ];
+
+    const magnitudes = [50, 90, 70, 110];
+
+    corners.forEach((corner, i) => {
+      const θ = cornerAngles[i];
+      const mag = magnitudes[i];
+      const head = [
+        corner[0] + mag * Math.cos(θ),
+        corner[1] + mag * Math.sin(θ)
+      ];
+      vector(ctx1, corner, head);
+    });
+
+    const bottomMid = [boxX + boxW / 2, boxY + boxH];
+    const downForce = [bottomMid[0], bottomMid[1] + 80];
+    vector(ctx1, bottomMid, downForce);
+
+    // ============================
+    // Task 2: Non-Overlapping Circles
+    // ============================
+    const canvas2 = document.createElement('canvas');
+    canvas2.width = 800;
+    canvas2.height = 800;
+    document.body.appendChild(canvas2);
+    const ctx2 = canvas2.getContext('2d');
+    ctx2.fillStyle = 'white';
+
+    const circles = [];
+    const maxCircles = 50;
+    const maxTriesPerCircle = 500;
+    const maxRadius = 20;
+
+    while (circles.length < maxCircles) {
+      let placed = false;
+
+      for (let attempt = 0; attempt < maxTriesPerCircle; attempt++) {
+        const r = randInt(5, maxRadius);
+        const x = randInt(r, canvas2.width - r);
+        const y = randInt(r, canvas2.height - r);
+        const center = [x, y];
+
+        const nearby = circles.filter(c =>
+          Math.abs(c.center[0] - x) < (r + maxRadius) &&
+          Math.abs(c.center[1] - y) < (r + maxRadius)
+        );
+
+        const overlaps = nearby.some(c =>
+          distance(center, c.center) < (r + c.radius)
+        );
+
+        if (!overlaps) {
+          circles.push({ center, radius: r });
+          drawCircle(ctx2, center, r);
+          placed = true;
+          break;
+        }
+      }
+
+      if (!placed) {
+        console.warn(`Circle ${circles.length + 1} could not be placed.`);
+        break;
+      }
+    }
+
+    // ============================
+    // Task 3: Zig-Zag Mass-Spring Chain
+    // ============================
+    const canvas3 = document.createElement('canvas');
+    canvas3.width = 800;
+    canvas3.height = 800;
+    document.body.appendChild(canvas3);
+    const ctx3 = canvas3.getContext('2d');
+    ctx3.fillStyle = 'white';
+    ctx3.strokeStyle = 'white';
+    ctx3.lineWidth = 2;
+
+    const radius = 15;
+    const massCenters = [
+      [150, 340],
+      [340, 340],
+      [530, 340]
+    ];
+
+    for (const center of massCenters) {
+      drawCircle(ctx3, center, radius);
+    }
+
+    drawSpring(ctx3, massCenters[0], massCenters[1], 10, 10);
+    drawSpring(ctx3, massCenters[1], massCenters[2], 10, 10);
+  </script>
+</body>
+</html>
