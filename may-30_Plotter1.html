@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>May 30: Function Plotter</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #1e1e1e;
+      color: white;
+      padding: 2rem;
+    }
+    input, button {
+      font-size: 1rem;
+      padding: 0.5rem;
+      margin-right: 0.5rem;
+      background-color: #333;
+      color: white;
+      border: 1px solid #aaa;
+    }
+    canvas {
+      border: 1px solid white;
+      margin-top: 1rem;
+    }
+    #error {
+      color: red;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>May 30 Function Plotter</h1>
+  <label>Enter function of x: </label>
+  <input id="inputFn" value="Math.sin(x)">
+  <button onclick="handleInput()">Plot</button>
+  <div id="error"></div>
+  <canvas id="canvas" width="800" height="400"></canvas>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    function handleInput() {
+      const error = document.getElementById("error");
+      error.textContent = "";
+      const raw = document.getElementById("inputFn").value;
+
+      const f = getFunctionFromInput(raw);
+      if (!f) {
+        error.textContent = "Invalid function expression.";
+        return;
+      }
+
+      plot({
+        x: 0,
+        y: 0,
+        width: canvas.width,
+        height: canvas.height,
+        curve: f,
+        xmin: -10,
+        xmax: 10,
+        ymin: -2,
+        ymax: 2
+      });
+    }
+
+    function getFunctionFromInput(str) {
+      try {
+        return new Function("x", `return ${str}`);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function plot(options) {
+      const { x, y, width, height, curve, xmin, xmax, ymin, ymax } = options;
+      ctx.clearRect(x, y, width, height);
+
+      // Axes
+      ctx.strokeStyle = "gray";
+      ctx.beginPath();
+      const x0 = x - xmin / (xmax - xmin) * width;
+      const y0 = y + height + ymin / (ymax - ymin) * height;
+      ctx.moveTo(x, y0);
+      ctx.lineTo(x + width, y0);
+      ctx.moveTo(x0, y);
+      ctx.lineTo(x0, y + height);
+      ctx.stroke();
+
+      // Curve
+      ctx.strokeStyle = "#00ffff";
+      ctx.beginPath();
+      const samples = 500;
+      for (let i = 0; i <= samples; i++) {
+        const tx = xmin + (xmax - xmin) * (i / samples);
+        let ty = curve(tx);
+        if (typeof ty !== 'number' || !isFinite(ty)) {
+          ctx.moveTo(x + (tx - xmin) / (xmax - xmin) * width,
+                     y + height - (-ymin) / (ymax - ymin) * height);
+          continue;
+        }
+        const px = x + (tx - xmin) / (xmax - xmin) * width;
+        const py = y + height - (ty - ymin) / (ymax - ymin) * height;
+        if (i === 0) {
+          ctx.moveTo(px, py);
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.stroke();
+    }
+
+    // Initial render
+    handleInput();
+  </script>
+</body>
+</html>
