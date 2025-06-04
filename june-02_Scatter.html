@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>June 02: Scatter Plot</title>
+  <title>June 02: Scatter Plot with Curve Fitting</title>
   <style>
     body {
       background-color: #1e1e1e;
@@ -21,6 +21,12 @@
     canvas {
       border: 1px solid white;
       margin-top: 1rem;
+      display: block;
+    }
+    #canvasContainer {
+      position: relative;
+      width: 820px;
+      height: 460px;
     }
     #error {
       color: red;
@@ -55,7 +61,9 @@
 
   <button onclick="drawScatter()">Plot</button>
   <div id="error"></div>
-  <canvas id="canvas" width="800" height="400"></canvas>
+  <div id="canvasContainer">
+    <canvas id="canvas" width="800" height="440"></canvas>
+  </div>
 
   <script>
     const canvas = document.getElementById("canvas");
@@ -86,16 +94,49 @@
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      const x0 = -xmin / (xmax - xmin) * canvas.width;
+      const y0 = canvas.height - (-ymin / (ymax - ymin)) * canvas.height - 30; // Shift axis up
+
       // Axes
       ctx.strokeStyle = "gray";
       ctx.beginPath();
-      const x0 = -xmin / (xmax - xmin) * canvas.width;
-      const y0 = canvas.height - (-ymin / (ymax - ymin)) * canvas.height;
       ctx.moveTo(0, y0);
       ctx.lineTo(canvas.width, y0);
       ctx.moveTo(x0, 0);
       ctx.lineTo(x0, canvas.height);
       ctx.stroke();
+
+      // Axis Labels
+      ctx.fillStyle = "white";
+      ctx.font = "12px sans-serif";
+      ctx.fillText("X", canvas.width - 15, y0 - 8);
+      ctx.fillText("Y", x0 + 8, 12);
+
+      // Tick Marks and Labels (X above axis, Y beside)
+      ctx.strokeStyle = "gray";
+      ctx.fillStyle = "gray";
+      const xticks = 10;
+      const yticks = 10;
+      for (let i = 0; i <= xticks; i++) {
+        const tx = xmin + (xmax - xmin) * (i / xticks);
+        const px = (tx - xmin) / (xmax - xmin) * canvas.width;
+        ctx.beginPath();
+        ctx.moveTo(px, y0 - 5);
+        ctx.lineTo(px, y0 + 5);
+        ctx.stroke();
+        if (px > 25 && px < canvas.width - 25)
+          ctx.fillText(tx.toFixed(1), px - 10, y0 - 10); // Label above axis
+      }
+      for (let i = 0; i <= yticks; i++) {
+        const ty = ymin + (ymax - ymin) * (i / yticks);
+        const py = canvas.height - (ty - ymin) / (ymax - ymin) * canvas.height;
+        ctx.beginPath();
+        ctx.moveTo(x0 - 5, py);
+        ctx.lineTo(x0 + 5, py);
+        ctx.stroke();
+        if (py > 12 && py < canvas.height - 12)
+          ctx.fillText(ty.toFixed(1), x0 + 10, py + 4);
+      }
 
       // Scatter Points
       ctx.fillStyle = "#00ffff";
@@ -189,7 +230,6 @@
     }
 
     function solve3x3(A, B) {
-      // Solve Ax = B using Cramer's Rule
       const det = (M) =>
         M[0][0]*(M[1][1]*M[2][2] - M[1][2]*M[2][1]) -
         M[0][1]*(M[1][0]*M[2][2] - M[1][2]*M[2][0]) +
