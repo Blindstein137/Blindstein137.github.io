@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>June 02: Scatter Plot</title>
+  <style>
+    body {
+      background-color: #1e1e1e;
+      color: white;
+      font-family: sans-serif;
+      padding: 2rem;
+    }
+    input, button, textarea, select {
+      font-size: 1rem;
+      padding: 0.5rem;
+      margin: 0.25rem;
+      background-color: #333;
+      color: white;
+      border: 1px solid #aaa;
+    }
+    canvas {
+      border: 1px solid white;
+      margin-top: 1rem;
+    }
+    #error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <h1>June 02: Scatter Plot with Curve Fitting</h1>
+
+  <label>Paste coordinate data (x,y per line):</label><br>
+  <textarea id="dataInput" rows="10" cols="50">
+1,2
+2,3
+3,5
+4,4
+5,6
+  </textarea><br>
+
+  <label>X Range: </label>
+  <input id="xmin" type="number" value="0">
+  <input id="xmax" type="number" value="10">
+  <label>Y Range: </label>
+  <input id="ymin" type="number" value="0">
+  <input id="ymax" type="number" value="10"><br>
+
+  <label>Fit Type: </label>
+  <select id="fitType">
+    <option value="linear">Linear</option>
+    <option value="quadratic">Quadratic</option>
+    <option value="exponential">Exponential</option>
+  </select>
+
+  <button onclick="drawScatter()">Plot</button>
+  <div id="error"></div>
+  <canvas id="canvas" width="800" height="400"></canvas>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    function drawScatter() {
+      const error = document.getElementById("error");
+      error.textContent = "";
+
+      const raw = document.getElementById("dataInput").value.trim();
+      const lines = raw.split(/\n+/);
+      const points = [];
+
+      for (const line of lines) {
+        const parts = line.split(',').map(s => parseFloat(s.trim()));
+        if (parts.length !== 2 || parts.some(isNaN)) {
+          error.textContent = `Invalid line: ${line}`;
+          return;
+        }
+        points.push({ x: parts[0], y: parts[1] });
+      }
+
+      const xmin = parseFloat(document.getElementById("xmin").value);
+      const xmax = parseFloat(document.getElementById("xmax").value);
+      const ymin = parseFloat(document.getElementById("ymin").value);
+      const ymax = parseFloat(document.getElementById("ymax").value);
+      const fitType = document.getElementById("fitType").value;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Axes
+      ctx.strokeStyle = "gray";
+      ctx.beginPath();
+      const x0 = -xmin / (xmax - xmin) * canvas.width;
+      const y0 = canvas.height - (-ymin / (ymax - ymin)) * canvas.height;
+      ctx.moveTo(0, y0);
+      ctx.lineTo(canvas.width, y0);
+      ctx.moveTo(x0, 0);
+      ctx.lineTo(x0, canvas.height);
+      ctx.stroke();
+
+      // Scatter Points
+      ctx.fillStyle = "#00ffff";
+      for (const pt of points) {
+        const px = (pt.x - xmin) / (xmax - xmin) * canvas.width;
+        const py = canvas.height - (pt.y - ymin) / (ymax - ymin) * canvas.height;
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+
+      // Curve Fit
+      const fitFn = fitCurve(points, fitType);
+      if (fitFn) {
+        ctx.strokeStyle = "#ff00ff";
+        ctx.beginPath();
+        const samples = 500;
+        for (let i = 0; i <= samples; i++) {
+          const tx = xmin + (xmax - xmin) * (i / samples);
+          const ty = fitFn(tx);
+          const px = (tx - xmin) / (xmax - xmin) * canvas.width;
+          const py = canvas.height - (ty - ymin) / (ymax - ymin) * canvas.height;
+          if (i === 0) {
+            ctx.moveTo(px, py);
+          } else {
+            ctx.lineTo(px, py);
+          }
+        }
+        ctx.stroke();
+      }
+    }
+
+    function fitCurve(points, type) {
+      const n = points.length;
+      if (n === 0) return null;
+
+      const x = points.map(p => p.x);
+      const y = points.map(p => p.y);
+
+      const sum = arr => arr.reduce((a, b) => a + b, 0);
+
+      if (type === 'linear') {
+        const sx = sum(x);
+        const sy = sum(y);
+        const sxx = sum(x.map(v => v * v));
+        const sxy = sum(x.map((v, i) => v * y[i]));
+
+        const m = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+        const b = (sy - m * sx) / n;
+
+        return x => m * x + b;
+      }
+
+      if (type === 'quadratic') {
+        let sx = 0, sy = 0, sxx = 0, sxy = 0, sxxx = 0, sxxxx = 0, sxxy = 0;
+        for (let i = 0; i < n; i++) {
+          const xi = x[i], yi = y[i];
+          sx += xi;
+          sy += yi;
+          sxx += xi * xi;
+          sxy += xi * yi;
+          sxxx += xi * xi * xi;
+          sxxxx += xi * xi * xi * xi;
+          sxxy += xi * xi * yi;
+        }
+        const A = [
+          [n, sx, sxx],
+          [sx, sxx, sxxx],
+          [sxx, sxxx, sxxxx]
+        ];
+        const B = [sy, sxy, sxxy];
+
+        const [a, b, c] = solve3x3(A, B);
+        return x => a + b * x + c * x * x;
+      }
+
+      if (type === 'exponential') {
+        const logy = y.map(val => Math.log(val));
+        const sx = sum(x);
+        const slogy = sum(logy);
+        const sxx = sum(x.map(v => v * v));
+        const sxlogy = sum(x.map((v, i) => v * logy[i]));
+
+        const b = (n * sxlogy - sx * slogy) / (n * sxx - sx * sx);
+        const a = Math.exp((slogy - b * sx) / n);
+
+        return x => a * Math.exp(b * x);
+      }
+
+      return null;
+    }
+
+    function solve3x3(A, B) {
+      // Solve Ax = B using Cramer's Rule
+      const det = (M) =>
+        M[0][0]*(M[1][1]*M[2][2] - M[1][2]*M[2][1]) -
+        M[0][1]*(M[1][0]*M[2][2] - M[1][2]*M[2][0]) +
+        M[0][2]*(M[1][0]*M[2][1] - M[1][1]*M[2][0]);
+
+      const D = det(A);
+      const D1 = det([[B[0], A[0][1], A[0][2]], [B[1], A[1][1], A[1][2]], [B[2], A[2][1], A[2][2]]]);
+      const D2 = det([[A[0][0], B[0], A[0][2]], [A[1][0], B[1], A[1][2]], [A[2][0], B[2], A[2][2]]]);
+      const D3 = det([[A[0][0], A[0][1], B[0]], [A[1][0], A[1][1], B[1]], [A[2][0], A[2][1], B[2]]]);
+
+      return [D1 / D, D2 / D, D3 / D];
+    }
+  </script>
+</body>
+</html>
