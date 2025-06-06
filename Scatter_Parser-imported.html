@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scatter Plot V5 with Parser</title>
+  <script type="module">
+    import { ExpressionParser } from './parser/ExpressionParser_Final.js';
+
+    function compileToFunction(ast) {
+      const mathFns = {
+        sin: Math.sin,
+        cos: Math.cos,
+        tan: Math.tan,
+        exp: Math.exp,
+        log: Math.log,
+        sqrt: Math.sqrt,
+        abs: Math.abs,
+        floor: Math.floor,
+        ceil: Math.ceil,
+        round: Math.round,
+        pow: Math.pow,
+        max: Math.max,
+        min: Math.min,
+      };
+
+      function evalNode(node, scope) {
+        switch (node.type) {
+          case 'Literal': return node.value;
+          case 'Identifier': return scope[node.name];
+          case 'BinaryExpression': {
+            const left = evalNode(node.left, scope);
+            const right = evalNode(node.right, scope);
+            switch (node.operator) {
+              case '+': return left + right;
+              case '-': return left - right;
+              case '*': return left * right;
+              case '/': return left / right;
+              case '^': return Math.pow(left, right);
+            }
+          }
+          case 'UnaryExpression':
+            return -evalNode(node.argument, scope);
+          case 'FunctionCall': {
+            const fn = mathFns[node.name];
+            if (!fn) throw new Error("Unknown function: " + node.name);
+            const args = node.arguments.map(arg => evalNode(arg, scope));
+            return fn(...args);
+          }
+          case 'TernaryExpression':
+            return evalNode(node.condition, scope)
+              ? evalNode(node.trueExpr, scope)
+              : evalNode(node.falseExpr, scope);
+          case 'ComparisonExpression': {
+            const left = evalNode(node.left, scope);
+            const right = evalNode(node.right, scope);
+            switch (node.operator) {
+              case '<': return left < right;
+              case '>': return left > right;
+              case '<=': return left <= right;
+              case '>=': return left >= right;
+              case '!=': return left !== right;
+            }
+          }
+          case 'LogicalExpression': {
+            const left = evalNode(node.left, scope);
+            const right = evalNode(node.right, scope);
+            return node.operator === '&&' ? left && right : left || right;
+          }
+          case 'Derivative':
+            const h = 1e-5;
+            const v = node.variable;
+            return (evalNode({ type: 'BinaryExpression', operator: '-',
+              left: { type: 'FunctionCall', name: '__expr', arguments: [{ type: 'Literal', value: scope[v] + h }] },
+              right: { type: 'FunctionCall', name: '__expr', arguments: [{ type: 'Literal', value: scope[v] - h }] },
+            }, scope)) / (2 * h);
+          default:
+            throw new Error("Unknown AST node type: " + node.type);
+        }
+      }
+
+      return function (x) {
+        return evalNode(ast, { x, __expr: t => evalNode(ast, { x: t }) });
+      };
+    }
+
+    function drawUserCurve(fn, ctx, width, height, xMin, xMax, yMin, yMax) {
+      const step = (xMax - xMin) / width;
+      ctx.beginPath();
+      for (let px = 0; px <= width; px++) {
+        const x = xMin + px * step;
+        let y;
+        try {
+          y = fn(x);
+        } catch {
+          continue;
+        }
+        if (!isFinite(y)) continue;
+        const py = height - ((y - yMin) / (yMax - yMin)) * height;
+        if (px === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = "#00f";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      const width = canvas.width;
+      const height = canvas.height;
+
+      const xMin = -10, xMax = 10;
+      const yMin = -10, yMax = 10;
+
+      document.getElementById("plotBtn").addEventListener("click", () => {
+        ctx.clearRect(0, 0, width, height);
+
+        const expr = document.getElementById("inputExpr").value;
+        const error = document.getElementById("error");
+        error.textContent = "";
+
+        try {
+          const parser = new ExpressionParser();
+          const ast = parser.parse(expr);
+          const fn = compileToFunction(ast);
+          drawUserCurve(fn, ctx, width, height, xMin, xMax, yMin, yMax);
+        } catch (err) {
+          error.textContent = "Error: " + err.message;
+        }
+      });
+    });
+  </script>
+</head>
+<body>
+  <h1>Plot a Math Expression</h1>
+  <input id="inputExpr" type="text" size="60" placeholder="Type expression in x (e.g. sin(x), d/dx(x^2))" />
+  <button id="plotBtn">Plot</button>
+  <p id="error" style="color: red;"></p>
+  <canvas id="canvas" width="800" height="400" style="border:1px solid black;"></canvas>
+</body>
+</html>
