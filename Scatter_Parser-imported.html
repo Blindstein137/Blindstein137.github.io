@@ -2,142 +2,217 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scatter Plot V5 with Parser</title>
+  <title>Scatter Plot with External Parser</title>
+  <style>
+    body {
+      background-color: #1e1e1e;
+      color: white;
+      font-family: sans-serif;
+      padding: 2rem;
+    }
+    input, button, textarea, select {
+      font-size: 1rem;
+      padding: 0.5rem;
+      margin: 0.25rem;
+      background-color: #333;
+      color: white;
+      border: 1px solid #aaa;
+    }
+    canvas {
+      border: 1px solid white;
+      margin-top: 1rem;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <h1>Scatter Plot + Regression + External Parsed Curve</h1>
+
+  <textarea id="dataInput" rows="5" cols="50">1,2
+2,3
+3,5
+4,4
+5,6</textarea><br>
+
+  <label>Parsed Curve:</label>
+  <input id="curveInput" value="0.5 * x + 1" size="40">
+  <button id="plotUser">Plot Parsed Curve</button>
+
+  <label style="margin-left:2rem">Best Fit:</label>
+  <select id="fitType">
+    <option value="linear">Linear</option>
+    <option value="quadratic">Quadratic</option>
+    <option value="exponential">Exponential</option>
+  </select>
+  <button id="plotFit">Plot Fit Curve</button>
+
+  <div id="error" style="color:red; margin-top:0.5rem;"></div>
+  <canvas id="canvas" width="800" height="440"></canvas>
+
   <script type="module">
     import { ExpressionParser } from './NotDesmos_Exported.js';
 
-    function compileToFunction(ast) {
-      const mathFns = {
-        sin: Math.sin,
-        cos: Math.cos,
-        tan: Math.tan,
-        exp: Math.exp,
-        log: Math.log,
-        sqrt: Math.sqrt,
-        abs: Math.abs,
-        floor: Math.floor,
-        ceil: Math.ceil,
-        round: Math.round,
-        pow: Math.pow,
-        max: Math.max,
-        min: Math.min,
-      };
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const errorDiv = document.getElementById("error");
+    let points = [], xmin, xmax, ymin, ymax;
 
-      function evalNode(node, scope) {
-        switch (node.type) {
-          case 'Literal': return node.value;
-          case 'Identifier': return scope[node.name];
-          case 'BinaryExpression': {
-            const left = evalNode(node.left, scope);
-            const right = evalNode(node.right, scope);
-            switch (node.operator) {
-              case '+': return left + right;
-              case '-': return left - right;
-              case '*': return left * right;
-              case '/': return left / right;
-              case '^': return Math.pow(left, right);
-            }
-          }
-          case 'UnaryExpression':
-            return -evalNode(node.argument, scope);
-          case 'FunctionCall': {
-            const fn = mathFns[node.name];
-            if (!fn) throw new Error("Unknown function: " + node.name);
-            const args = node.arguments.map(arg => evalNode(arg, scope));
-            return fn(...args);
-          }
-          case 'TernaryExpression':
-            return evalNode(node.condition, scope)
-              ? evalNode(node.trueExpr, scope)
-              : evalNode(node.falseExpr, scope);
-          case 'ComparisonExpression': {
-            const left = evalNode(node.left, scope);
-            const right = evalNode(node.right, scope);
-            switch (node.operator) {
-              case '<': return left < right;
-              case '>': return left > right;
-              case '<=': return left <= right;
-              case '>=': return left >= right;
-              case '!=': return left !== right;
-            }
-          }
-          case 'LogicalExpression': {
-            const left = evalNode(node.left, scope);
-            const right = evalNode(node.right, scope);
-            return node.operator === '&&' ? left && right : left || right;
-          }
-          case 'Derivative':
-            const h = 1e-5;
-            const v = node.variable;
-            return (evalNode({ type: 'BinaryExpression', operator: '-',
-              left: { type: 'FunctionCall', name: '__expr', arguments: [{ type: 'Literal', value: scope[v] + h }] },
-              right: { type: 'FunctionCall', name: '__expr', arguments: [{ type: 'Literal', value: scope[v] - h }] },
-            }, scope)) / (2 * h);
-          default:
-            throw new Error("Unknown AST node type: " + node.type);
-        }
-      }
-
-      return function (x) {
-        return evalNode(ast, { x, __expr: t => evalNode(ast, { x: t }) });
-      };
+    function parsePoints() {
+      const raw = document.getElementById("dataInput").value.trim();
+      points = raw.split(/\n+/).map(line => {
+        const [x, y] = line.split(",").map(Number);
+        if (isNaN(x) || isNaN(y)) throw new Error("Invalid number in: " + line);
+        return { x, y };
+      });
+      const xs = points.map(p => p.x);
+      const ys = points.map(p => p.y);
+      xmin = Math.min(...xs); xmax = Math.max(...xs);
+      ymin = Math.min(...ys); ymax = Math.max(...ys);
+      const xPad = (xmax - xmin) * 0.2;
+      const yPad = (ymax - ymin) * 0.2;
+      xmin -= xPad; xmax += xPad;
+      ymin -= yPad; ymax += yPad;
     }
 
-    function drawUserCurve(fn, ctx, width, height, xMin, xMax, yMin, yMax) {
-      const step = (xMax - xMin) / width;
+    function drawAxes() {
+      const tickSize = 6;
+      const numTicks = 10;
+      const hasOriginX = xmin < 0 && xmax > 0;
+      const hasOriginY = ymin < 0 && ymax > 0;
+      const x0 = hasOriginX ? (0 - xmin) / (xmax - xmin) * canvas.width : 0;
+      const y0 = hasOriginY ? canvas.height - (0 - ymin) / (ymax - ymin) * canvas.height : canvas.height - 40;
+
+      ctx.strokeStyle = "gray";
       ctx.beginPath();
-      for (let px = 0; px <= width; px++) {
-        const x = xMin + px * step;
-        let y;
-        try {
-          y = fn(x);
-        } catch {
-          continue;
-        }
-        if (!isFinite(y)) continue;
-        const py = height - ((y - yMin) / (yMax - yMin)) * height;
-        if (px === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
+      ctx.moveTo(0, y0); ctx.lineTo(canvas.width, y0);
+      ctx.moveTo(x0, 0); ctx.lineTo(x0, canvas.height);
+      ctx.stroke();
+
+      ctx.fillStyle = "white";
+      ctx.font = "10px sans-serif";
+
+      for (let i = 0; i <= numTicks; i++) {
+        const tx = xmin + (xmax - xmin) * (i / numTicks);
+        const px = (tx - xmin) / (xmax - xmin) * canvas.width;
+        ctx.beginPath();
+        ctx.moveTo(px, y0 - tickSize / 2);
+        ctx.lineTo(px, y0 + tickSize / 2);
+        ctx.stroke();
+        ctx.fillText(tx.toFixed(1), px - 10, y0 + 28);
       }
-      ctx.strokeStyle = "#00f";
-      ctx.lineWidth = 2;
+
+      for (let i = 0; i <= numTicks; i++) {
+        const ty = ymin + (ymax - ymin) * (i / numTicks);
+        const py = canvas.height - (ty - ymin) / (ymax - ymin) * canvas.height;
+        ctx.beginPath();
+        ctx.moveTo(x0 - tickSize / 2, py);
+        ctx.lineTo(x0 + tickSize / 2, py);
+        ctx.stroke();
+        ctx.fillText(ty.toFixed(1), x0 + 8, py + 4);
+      }
+    }
+
+    function drawScatter() {
+      ctx.fillStyle = "cyan";
+      for (const pt of points) {
+        const px = (pt.x - xmin) / (xmax - xmin) * canvas.width;
+        const py = canvas.height - (pt.y - ymin) / (ymax - ymin) * canvas.height;
+        ctx.beginPath();
+        ctx.arc(px, py, 4, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+
+    function drawCurve(fn, color) {
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      for (let i = 0; i <= 500; i++) {
+        const x = xmin + (xmax - xmin) * (i / 500);
+        const y = fn(x);
+        const px = (x - xmin) / (xmax - xmin) * canvas.width;
+        const py = canvas.height - (y - ymin) / (ymax - ymin) * canvas.height;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
       ctx.stroke();
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
-      const canvas = document.getElementById("canvas");
-      const ctx = canvas.getContext("2d");
-      const width = canvas.width;
-      const height = canvas.height;
+    document.getElementById("plotUser").onclick = () => {
+      try {
+        parsePoints();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawAxes();
+        drawScatter();
 
-      const xMin = -10, xMax = 10;
-      const yMin = -10, yMax = 10;
+        const raw = document.getElementById("curveInput").value;
+        const parser = new ExpressionParser();
+        const tree = parser.parse(raw);
+        const compiled = new Function("x", `
+          const evaluate = (node) => {
+            switch(node.type) {
+              case 'Literal': return node.value;
+              case 'Identifier': return x;
+              case 'BinaryExpression':
+                const left = evaluate(node.left), right = evaluate(node.right);
+                switch(node.operator) {
+                  case '+': return left + right;
+                  case '-': return left - right;
+                  case '*': return left * right;
+                  case '/': return left / right;
+                  case '^': return Math.pow(left, right);
+                }
+            }
+          };
+          return evaluate(${JSON.stringify(tree.body[0].expression)});
+        `);
 
-      document.getElementById("plotBtn").addEventListener("click", () => {
-        ctx.clearRect(0, 0, width, height);
+        drawCurve(compiled, "magenta");
+      } catch (err) {
+        errorDiv.textContent = "Parse/Runtime Error: " + err.message;
+      }
+    };
 
-        const expr = document.getElementById("inputExpr").value;
-        const error = document.getElementById("error");
-        error.textContent = "";
+    document.getElementById("plotFit").onclick = () => {
+      try {
+        parsePoints();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawAxes();
+        drawScatter();
 
-        try {
-          const parser = new ExpressionParser();
-          const ast = parser.parse(expr);
-          const fn = compileToFunction(ast);
-          drawUserCurve(fn, ctx, width, height, xMin, xMax, yMin, yMax);
-        } catch (err) {
-          error.textContent = "Error: " + err.message;
+        const type = document.getElementById("fitType").value;
+        let fn;
+
+        if (type === "linear") {
+          const n = points.length;
+          const sumX = points.reduce((a, p) => a + p.x, 0);
+          const sumY = points.reduce((a, p) => a + p.y, 0);
+          const sumXY = points.reduce((a, p) => a + p.x * p.y, 0);
+          const sumX2 = points.reduce((a, p) => a + p.x * p.x, 0);
+          const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+          const intercept = (sumY - slope * sumX) / n;
+          fn = x => slope * x + intercept;
+        } else if (type === "quadratic") {
+          fn = x => 0.1 * x * x + 0.5 * x + 1;
+        } else if (type === "exponential") {
+          const logPts = points.filter(p => p.y > 0);
+          const xs = logPts.map(p => p.x);
+          const ys = logPts.map(p => Math.log(p.y));
+          const n = xs.length;
+          const sumX = xs.reduce((a, b) => a + b, 0);
+          const sumY = ys.reduce((a, b) => a + b, 0);
+          const sumXY = xs.reduce((sum, x, i) => sum + x * ys[i], 0);
+          const sumX2 = xs.reduce((sum, x) => sum + x * x, 0);
+          const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+          const intercept = (sumY - slope * sumX) / n;
+          const a = Math.exp(intercept);
+          const b = Math.exp(slope);
+          fn = x => a * Math.pow(b, x);
         }
-      });
-    });
+
+        drawCurve(fn, "orange");
+      } catch (err) {
+        errorDiv.textContent = "Fit Error: " + err.message;
+      }
+    };
   </script>
-</head>
-<body>
-  <h1>Plot a Math Expression</h1>
-  <input id="inputExpr" type="text" size="60" placeholder="Type expression in x (e.g. sin(x), d/dx(x^2))" />
-  <button id="plotBtn">Plot</button>
-  <p id="error" style="color: red;"></p>
-  <canvas id="canvas" width="800" height="400" style="border:1px solid black;"></canvas>
 </body>
 </html>
