@@ -123,6 +123,29 @@
       }
     }
 
+    function evaluateAST(ast, xVal) {
+      switch (ast.type) {
+        case 'Literal': return ast.value;
+        case 'Identifier':
+          if (ast.name === 'x') return xVal;
+          throw new Error("Only 'x' is supported as input variable.");
+        case 'BinaryExpression': {
+          const left = evaluateAST(ast.left, xVal);
+          const right = evaluateAST(ast.right, xVal);
+          switch (ast.operator) {
+            case '+': return left + right;
+            case '-': return left - right;
+            case '*': return left * right;
+            case '/': return left / right;
+            case '^': return Math.pow(left, right);
+            default: throw new Error("Unknown operator " + ast.operator);
+          }
+        }
+        default:
+          throw new Error("Unhandled AST node type: " + ast.type);
+      }
+    }
+
     function drawCurve(fn, color) {
       ctx.strokeStyle = color;
       ctx.beginPath();
@@ -145,29 +168,12 @@
 
         const raw = document.getElementById("curveInput").value;
         const parser = new ExpressionParser();
-        const tree = parser.parse(raw);
-        const compiled = new Function("x", `
-          const evaluate = (node) => {
-            switch(node.type) {
-              case 'Literal': return node.value;
-              case 'Identifier': return x;
-              case 'BinaryExpression':
-                const left = evaluate(node.left), right = evaluate(node.right);
-                switch(node.operator) {
-                  case '+': return left + right;
-                  case '-': return left - right;
-                  case '*': return left * right;
-                  case '/': return left / right;
-                  case '^': return Math.pow(left, right);
-                }
-            }
-          };
-          return evaluate(${JSON.stringify(tree.body[0].expression)});
-        `);
+        const tree = parser.parse(raw).body[0].expression;
+        const fn = (x) => evaluateAST(tree, x);
 
-        drawCurve(compiled, "magenta");
+        drawCurve(fn, "magenta");
       } catch (err) {
-        errorDiv.textContent = "Parse/Runtime Error: " + err.message;
+        errorDiv.textContent = "Parse Error: " + err.message;
       }
     };
 
