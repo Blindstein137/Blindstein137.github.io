@@ -1,4 +1,4 @@
-// NotDesmos_Exported.js
+// NotDesmos_Exported.js - Working copy with generalized function nesting, left/right associativity, null can be passed to stack, etc...
 export class ExpressionParser {
   constructor() {
     this.tokens = [];
