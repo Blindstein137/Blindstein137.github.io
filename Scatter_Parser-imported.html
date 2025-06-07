@@ -128,7 +128,9 @@
         case 'Literal': return ast.value;
         case 'Identifier':
           if (ast.name === 'x') return xVal;
-          throw new Error("Only 'x' is supported as input variable.");
+          throw new Error("Only 'x' is supported.");
+        case 'UnaryExpression':
+          return -evaluateAST(ast.argument, xVal);
         case 'BinaryExpression': {
           const left = evaluateAST(ast.left, xVal);
           const right = evaluateAST(ast.right, xVal);
@@ -138,11 +140,17 @@
             case '*': return left * right;
             case '/': return left / right;
             case '^': return Math.pow(left, right);
-            default: throw new Error("Unknown operator " + ast.operator);
+            default: throw new Error("Unknown operator: " + ast.operator);
           }
         }
+        case 'FunctionCall': {
+          const func = ast.destination.name;
+          const args = ast.arguments.map(arg => evaluateAST(arg, xVal));
+          if (typeof Math[func] === 'function') return Math[func](...args);
+          throw new Error("Unknown function: " + func);
+        }
         default:
-          throw new Error("Unhandled AST node type: " + ast.type);
+          throw new Error("Unknown AST type: " + ast.type);
       }
     }
 
@@ -168,8 +176,8 @@
 
         const raw = document.getElementById("curveInput").value;
         const parser = new ExpressionParser();
-        const tree = parser.parse(raw).body[0].expression;
-        const fn = (x) => evaluateAST(tree, x);
+        const ast = parser.parse(raw).body[0].expression;
+        const fn = (x) => evaluateAST(ast, x);
 
         drawCurve(fn, "magenta");
       } catch (err) {
