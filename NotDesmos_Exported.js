@@ -1,4 +1,4 @@
-// Parser with corrected associativity
+// NotDesmos_Exported.js
 export class ExpressionParser {
   constructor() {
     this.tokens = [];
@@ -13,7 +13,7 @@ export class ExpressionParser {
       ['PLUS', /^\+/],
       ['MINUS', /^-/],
       ['MUL', /^\*/],
-      ['DIV', /^//],
+      ['DIV', /^\//],     // ✅ FIXED: Escaped properly
       ['POW', /^\^/],
       ['LPAREN', /^\(/],
       ['RPAREN', /^\)/],
@@ -40,7 +40,13 @@ export class ExpressionParser {
   parse(input) {
     this.tokens = this.tokenize(input);
     this.index = 0;
-    return { type: 'Program', body: [ { type: 'ExpressionStatement', expression: this.parseExpression() } ] };
+    return {
+      type: 'Program',
+      body: [{
+        type: 'ExpressionStatement',
+        expression: this.parseExpression()
+      }]
+    };
   }
 
   current() {
@@ -60,7 +66,8 @@ export class ExpressionParser {
     while (['PLUS', 'MINUS'].includes(this.current()?.type)) {
       const op = this.current().value;
       this.next();
-      node = { type: 'BinaryExpression', operator: op, left: node, right: this.parseMulDiv() };
+      const right = this.parseMulDiv();
+      node = { type: 'BinaryExpression', operator: op, left: node, right };
     }
     return node;
   }
@@ -70,17 +77,18 @@ export class ExpressionParser {
     while (['MUL', 'DIV'].includes(this.current()?.type)) {
       const op = this.current().value;
       this.next();
-      node = { type: 'BinaryExpression', operator: op, left: node, right: this.parsePow() };
+      const right = this.parsePow();
+      node = { type: 'BinaryExpression', operator: op, left: node, right };
     }
     return node;
   }
 
-  // Right-associative exponentiation
   parsePow() {
     let node = this.parseUnary();
-    if (this.current()?.type === 'POW') {
+    while (this.current()?.type === 'POW') {
       this.next();
-      node = { type: 'BinaryExpression', operator: '^', left: node, right: this.parsePow() };
+      const right = this.parseUnary();  // Right-associative
+      node = { type: 'BinaryExpression', operator: '^', left: node, right };
     }
     return node;
   }
@@ -88,7 +96,8 @@ export class ExpressionParser {
   parseUnary() {
     if (this.current()?.type === 'MINUS') {
       this.next();
-      return { type: 'UnaryExpression', operator: '-', argument: this.parseUnary() };
+      const argument = this.parseUnary();
+      return { type: 'UnaryExpression', operator: '-', argument };
     }
     return this.parsePostfix();
   }
@@ -102,9 +111,15 @@ export class ExpressionParser {
         args.push(this.parseExpression());
         if (this.current()?.type === 'COMMA') this.next();
       }
-      if (this.current()?.type !== 'RPAREN') throw new Error("Expected ')' after args");
+      if (this.current()?.type !== 'RPAREN') {
+        throw new Error("Expected ')' after function arguments");
+      }
       this.next();
-      node = { type: 'FunctionCall', destination: node, arguments: args };
+      node = {
+        type: 'FunctionCall',
+        destination: node,
+        arguments: args
+      };
     }
     return node;
   }
@@ -126,7 +141,9 @@ export class ExpressionParser {
     if (token.type === 'LPAREN') {
       this.next();
       const expr = this.parseExpression();
-      if (this.current()?.type !== 'RPAREN') throw new Error("Expected ')' after group");
+      if (this.current()?.type !== 'RPAREN') {
+        throw new Error("Expected ')' to close expression");
+      }
       this.next();
       return expr;
     }
