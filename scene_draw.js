@@ -1,21 +1,17 @@
-// sceneDraw.js
+// scene_draw.js
 // Draws processed scene instances onto a 2D canvas context
-// Assumes each object has a transform matrix, style, and base definition
 
 export function draw(ctx, instances) {
   for (const obj of instances) {
     ctx.save();
 
-    // Apply transform matrix to context
-    const m = obj.transform;
-    ctx.transform(m.data[0], m.data[1], m.data[3], m.data[4], m.data[6], m.data[7]);
+    const m = obj.transform.data;
+    ctx.transform(m[0], m[1], m[3], m[4], m[6], m[7]);
 
-    // Apply styling
     if (obj.style.fill) ctx.fillStyle = obj.style.fill;
     if (obj.style.stroke) ctx.strokeStyle = obj.style.stroke;
     if (obj.style.lineWidth) ctx.lineWidth = obj.style.lineWidth;
 
-    // Draw based on primitive type
     switch (obj.type) {
       case "circle": {
         const [cx, cy] = obj.base.center;
@@ -43,25 +39,6 @@ export function draw(ctx, instances) {
         ctx.beginPath();
         ctx.moveTo(obj.base.from[0], obj.base.from[1]);
         ctx.lineTo(obj.base.to[0], obj.base.to[1]);
-        ctx.stroke();
-        break;
-      }
-
-      case "curve": {
-        const f = obj.base.parametric;
-        const steps = f.steps || 100;
-        const tmin = f.tmin;
-        const tmax = f.tmax;
-        const dt = (tmax - tmin) / steps;
-
-        ctx.beginPath();
-        for (let i = 0; i <= steps; i++) {
-          const t = tmin + i * dt;
-          const x = eval(f.x);
-          const y = eval(f.y);
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
         ctx.stroke();
         break;
       }
