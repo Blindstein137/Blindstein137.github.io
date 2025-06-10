@@ -1,32 +1,7 @@
-// matrix.js with Vec3 class support and full matrix functionality
+// matrix.js
+// Mat3 class for 2D affine transformations
 
-class Vec3 {
-  constructor(x, y, z = 1) {
-    this.x = x;
-    this.y = y;
-    this.z = z;
-  }
-
-  toArray() {
-    return [this.x, this.y, this.z];
-  }
-
-  static fromArray([x, y, z = 1]) {
-    return new Vec3(x, y, z);
-  }
-
-  *[Symbol.iterator]() {
-    yield this.x;
-    yield this.y;
-    yield this.z;
-  }
-
-  toString() {
-    return `Vec3(${this.x}, ${this.y}, ${this.z})`;
-  }
-}
-
-class Mat3 {
+export class Mat3 {
   constructor(data) {
     this.data = data;
   }
@@ -41,9 +16,9 @@ class Mat3 {
 
   static translate([tx, ty]) {
     return new Mat3([
-      1, 0, 0,
-      0, 1, 0,
-      tx, ty, 1
+      1, 0, tx,
+      0, 1, ty,
+      0, 0, 1
     ]);
   }
 
@@ -56,9 +31,8 @@ class Mat3 {
   }
 
   static rotate(theta) {
-    const rad = typeof theta === 'number' ? theta : 0;
-    const c = Math.cos(rad);
-    const s = Math.sin(rad);
+    const c = Math.cos(theta);
+    const s = Math.sin(theta);
     return new Mat3([
       c, -s, 0,
       s,  c, 0,
@@ -67,49 +41,32 @@ class Mat3 {
   }
 
   mul(other) {
-    if (other instanceof Mat3) {
-      const a = this.data;
-      const b = other.data;
-      const result = new Array(9);
-
-      for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 3; col++) {
-          result[row * 3 + col] =
-            a[row * 3 + 0] * b[0 * 3 + col] +
-            a[row * 3 + 1] * b[1 * 3 + col] +
-            a[row * 3 + 2] * b[2 * 3 + col];
+    const a = this.data;
+    const b = other.data;
+    const result = [];
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 3; col++) {
+        result[row * 3 + col] = 0;
+        for (let i = 0; i < 3; i++) {
+          result[row * 3 + col] += a[row * 3 + i] * b[i * 3 + col];
         }
       }
-
-      return new Mat3(result);
-    } else if (other instanceof Vec3) {
-      const [x, y, z] = other;
-      const m = this.data;
-      const tx = x * m[0] + y * m[3] + z * m[6];
-      const ty = x * m[1] + y * m[4] + z * m[7];
-      const tz = x * m[2] + y * m[5] + z * m[8];
-      return new Vec3(tx, ty, tz);
-    } else {
-      throw new Error("Unsupported multiplication target");
     }
+    return new Mat3(result);
   }
 
-  applyToVec3([x, y, z = 1]) {
+  applyToVec3([x, y, z]) {
     const m = this.data;
     return [
-      x * m[0] + y * m[3] + z * m[6],
-      x * m[1] + y * m[4] + z * m[7],
-      x * m[2] + y * m[5] + z * m[8]
+      m[0]*x + m[1]*y + m[2]*z,
+      m[3]*x + m[4]*y + m[5]*z,
+      m[6]*x + m[7]*y + m[8]*z
     ];
   }
 
-  *[Symbol.iterator]() {
-    yield* this.data;
-  }
-
   toString() {
-    return `Mat3(${this.data.join(", ")})`;
+    return `[
+  ${this.data.slice(0, 3).join(', ')},\n  ${this.data.slice(3, 6).join(', ')},\n  ${this.data.slice(6, 9).join(', ')}
+]`;
   }
-}
-
-export { Mat3, Vec3 };
+} // End Mat3
