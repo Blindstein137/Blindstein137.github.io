@@ -1,40 +1,56 @@
-// read.js (corrected)
-
 import { Mat3 } from './matrix.js';
 
-function buildMatrix(transformList) {
-  let matrix = Mat3.identity();
-  let i = 0;
-  while (i < transformList.length) {
-    const cmd = transformList[i];
-    const arg = transformList[i + 1];
-    switch (cmd) {
-      case 'translate':
-        matrix = matrix.mul(Mat3.translate(arg)); // ✅ corrected
-        i++;
-        break;
-      case 'scale':
-        matrix = matrix.mul(Mat3.scale2(arg));    // ✅ corrected
-        i++;
-        break;
-      case 'rotate':
-        matrix = matrix.mul(Mat3.rotate(arg));
-        i++;
-        break;
-      default:
-        console.warn(`Unknown transform command: ${cmd}`);
+function buildMatrix(transforms) {
+  let result = Mat3.identity();
+
+  for (let i = 0; i < transforms.length; i += 2) {
+    const op = transforms[i];
+    const args = transforms[i + 1];
+
+    if (!args) {
+      console.warn(`Missing arguments for transform "${op}" at index ${i}`);
+      continue;
     }
-    i++;
+
+    switch (op) {
+      case "translate":
+        if (!Array.isArray(args) || args.length !== 2) {
+          console.warn(`Invalid arguments for translate:`, args);
+          break;
+        }
+        result = result.mul(Mat3.translate(args));
+        break;
+
+      case "scale":
+      case "scale2":
+        if (!Array.isArray(args) || args.length !== 2) {
+          console.warn(`Invalid arguments for scale:`, args);
+          break;
+        }
+        result = result.mul(Mat3.scale2(args));
+        break;
+
+      case "rotate":
+        if (typeof args !== "number") {
+          console.warn(`Invalid angle for rotate:`, args);
+          break;
+        }
+        result = result.mul(Mat3.rotate(args));
+        break;
+
+      default:
+        console.warn(`Unknown transform: "${op}"`);
+    }
   }
-  return matrix;
+
+  return result;
 }
 
-export function read(scene) {
+function read(scene) {
   return scene.objects.map(obj => {
-    const matrix = buildMatrix(obj.transforms);
-    return {
-      ...obj,
-      matrix,
-    };
+    const matrix = buildMatrix(obj.transforms || []);
+    return { ...obj, matrix };
   });
-} 
+}
+
+export { read };
