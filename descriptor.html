@@ -31,7 +31,7 @@
   <canvas id="canvas" width="500" height="500"></canvas>
 
   <script type="module">
-    import { scene } from './scene_descriptor (1).js';
+    import { getSceneDescriptor } from './scene_descriptor (1).js';
     import { read } from './read.js';
     import { draw } from './scene_draw.js';
 
@@ -49,7 +49,7 @@
 
       const rotateThenTranslate = [
         "rotate", Math.PI / 4,
-        "translate", [-Math.SQRT2, 0]  // Adjust to land origin-aligned triangle
+        "translate", [-Math.SQRT2, 0]
       ];
 
       const triangles = [];
@@ -76,7 +76,7 @@
     }
 
     window.drawMode = (mode = null) => {
-      const cleanScene = structuredClone(scene);
+      const cleanScene = structuredClone(getSceneDescriptor());
       cleanScene.objects = cleanScene.objects.filter(obj => obj.shape !== 'triangle' && obj.shape !== 'label');
 
       cleanScene.objects.push({
@@ -95,8 +95,8 @@
       draw(ctx, instances);
     };
 
-    // Draw base scene on load
-    drawMode();
+    // Draw on load
+    window.drawMode();
   </script>
 </body>
 </html>
