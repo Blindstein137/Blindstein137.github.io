@@ -1,56 +1,45 @@
+// read.js
+// Builds a transformation matrix from a transform stack and applies it to scene objects
+
 import { Mat3 } from './matrix.js';
 
-function buildMatrix(transforms) {
-  let result = Mat3.identity();
-
-  for (let i = 0; i < transforms.length; i += 2) {
-    const op = transforms[i];
-    const args = transforms[i + 1];
-
-    if (!args) {
-      console.warn(`Missing arguments for transform "${op}" at index ${i}`);
-      continue;
-    }
-
-    switch (op) {
-      case "translate":
-        if (!Array.isArray(args) || args.length !== 2) {
-          console.warn(`Invalid arguments for translate:`, args);
-          break;
-        }
-        result = result.mul(Mat3.translate(args));
+function buildMatrix(stack) {
+  let matrix = Mat3.identity();
+  for (let i = 0; i < stack.length; i++) {
+    const cmd = stack[i];
+    const arg = stack[i + 1];
+    switch (cmd) {
+      case 'translate':
+        matrix = matrix.mul(Mat3.translate(arg));
+        i++;
         break;
-
-      case "scale":
-      case "scale2":
-        if (!Array.isArray(args) || args.length !== 2) {
-          console.warn(`Invalid arguments for scale:`, args);
-          break;
-        }
-        result = result.mul(Mat3.scale2(args));
+      case 'scale':
+        matrix = matrix.mul(Mat3.scale2(arg));
+        i++;
         break;
-
-      case "rotate":
-        if (typeof args !== "number") {
-          console.warn(`Invalid angle for rotate:`, args);
-          break;
-        }
-        result = result.mul(Mat3.rotate(args));
+      case 'rotate':
+        matrix = matrix.mul(Mat3.rotate(arg));
+        i++;
         break;
-
       default:
-        console.warn(`Unknown transform: "${op}"`);
+        console.warn("Unknown command:", cmd);
     }
   }
-
-  return result;
+  return matrix;
 }
 
-function read(scene) {
-  return scene.objects.map(obj => {
-    const matrix = buildMatrix(obj.transforms || []);
-    return { ...obj, matrix };
+export function read(scene) {
+  const { primitives, objects } = scene;
+
+  return objects.map(obj => {
+    const shape = primitives[obj.shape];
+    const transform = buildMatrix(obj.transform || []);
+    return {
+      type: shape.type,
+      transform,
+      base: shape,
+      style: obj.style || {},
+      textOverride: obj.textOverride || null
+    };
   });
 }
-
-export { read };
