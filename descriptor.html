@@ -2,41 +2,41 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Matrix Transform Visualizer</title>
+  <title>Matrix Transform Demo</title>
   <style>
-    body {
-      background: #111;
-      color: white;
-      font-family: sans-serif;
-      padding: 1rem;
-    }
     canvas {
-      border: 1px solid white;
-      background: #222;
+      background-color: black;
       display: block;
-      margin-top: 1rem;
+      margin: 1em auto;
+      border: 1px solid #888;
     }
-    button {
-      margin-right: 1rem;
-      padding: 0.5rem 1rem;
+    .buttons {
+      text-align: center;
+      margin-top: 1em;
     }
     pre {
-      background: #333;
-      padding: 1rem;
-      overflow-x: auto;
-      font-family: monospace;
+      color: white;
+      background: #222;
+      padding: 1em;
+      max-width: 600px;
+      margin: 1em auto;
+      border-radius: 8px;
+    }
+    body {
+      background-color: #111;
+      color: #ccc;
+      font-family: sans-serif;
     }
   </style>
 </head>
 <body>
-  <h1>Matrix Transform Visualizer</h1>
-  <button id="tr">Translate → Rotate</button>
-  <button id="rt">Rotate → Translate</button>
-  <button id="both">Both</button>
-
-  <canvas id="canvas" width="800" height="600"></canvas>
-  <h2>Matrix Output</h2>
-  <pre id="matrixOutput"></pre>
+  <canvas id="canvas" width="600" height="600"></canvas>
+  <div class="buttons">
+    <button onclick="render(rt)">Rotate then Translate</button>
+    <button onclick="render(tr)">Translate then Rotate</button>
+    <button onclick="render(both)">Both (Final Comparison)</button>
+  </div>
+  <pre id="output"></pre>
 
   <script type="module">
     import { getSceneDescriptor } from './scene_descriptor.js';
@@ -46,77 +46,37 @@
 
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    const output = document.getElementById('matrixOutput');
+    const baseScene = read(getSceneDescriptor());
+    const output = document.getElementById('output');
 
-    const baseScene = getSceneDescriptor();
+    const RT = Mat3.translate([3, 1]).mul(Mat3.rotate(Math.PI / 4));
+    const TR = Mat3.rotate(Math.PI / 4).mul(Mat3.translate([3, 1]));
 
-    function render(transformA = [], transformB = [], color = 'white') {
+    function render(transform = null) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const scene = structuredClone(baseScene);
 
-      const instances = read({
-        primitives: baseScene.primitives,
-        objects: baseScene.objects.map(obj => ({
-          ...obj,
-          style: obj.shape === 'triangle' ? { stroke: 'white', fill: 'transparent', lineWidth: 2 } : obj.style
-        }))
-      });
+      if (transform) {
+        scene.forEach(obj => {
+          if (obj.shape === 'triangle') {
+            obj.transform = transform.mul(obj.transform);
+          }
+        });
+      }
 
-      draw(ctx, instances);
+      draw(ctx, scene);
 
-      const triangle = baseScene.primitives.triangle;
-      const matrixA = buildMatrix(transformA);
-      const matrixB = buildMatrix(transformB);
-      const composite = matrixA.mul(matrixB);
-
-      if (transformA.length || transformB.length) {
-        draw(ctx, [{
-          type: 'polygon',
-          base: triangle,
-          transform: composite,
-          style: { stroke: color, fill: 'transparent', lineWidth: 2 }
-        }]);
-
-        output.textContent = `Transform A:\n${matrixA.toString()}\n\nTransform B:\n${matrixB.toString()}\n\nComposite (B * A):\n${composite.toString()}`;
+      if (transform) {
+        output.textContent = transform.toString();
+      } else {
+        output.textContent = '';
       }
     }
 
-    function buildMatrix(stack) {
-      let matrix = Mat3.identity();
-      for (let i = 0; i < stack.length; i++) {
-        const cmd = stack[i];
-        const arg = stack[i + 1];
-        switch (cmd) {
-          case 'translate':
-            matrix = matrix.mul(Mat3.translate(arg));
-            i++;
-            break;
-          case 'scale':
-            matrix = matrix.mul(Mat3.scale2(arg));
-            i++;
-            break;
-          case 'rotate':
-            matrix = matrix.mul(Mat3.rotate(arg));
-            i++;
-            break;
-        }
-      }
-      return matrix;
-    }
+    const rt = RT;
+    const tr = TR;
+    const both = Mat3.identity(); // Already drawn separately
 
-    document.getElementById('tr').onclick = () => {
-      render(['translate', [0.58, 0.81]], ['rotate', Math.atan(0.81 / 0.6)], 'green');
-    };
-
-    document.getElementById('rt').onclick = () => {
-      render(['rotate', Math.atan(0.81 / 0.6)], ['translate', [0.58, 0.81]], 'red');
-    };
-
-    document.getElementById('both').onclick = () => {
-      render(['translate', [0.58, 0.81]], ['rotate', Math.atan(0.81 / 0.6)], 'green');
-      render(['rotate', Math.atan(0.81 / 0.6)], ['translate', [0.58, 0.81]], 'red');
-    };
-
-    // Draw base triangle by default
     render();
   </script>
 </body>
