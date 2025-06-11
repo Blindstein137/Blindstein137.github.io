@@ -1,3 +1,23 @@
+<!--
+=== DevTrack: File Update Plan Tracker ===
+
+✅ Phase Checklist:
+1. ✔ Button functionality + matrix display
+2. ☐ Y-axis label upright orientation
+3. ☐ Full-screen coordinate axes (with padded auto-scaling)
+4. ☐ Tick marks at regular intervals with numerical labels
+5. ☐ Ensure RT and TR transformations land triangle on same coordinates
+
+🔁 Files to cycle through for current phase:
+- [✔] descriptor.html
+- [ ] matrix.js
+- [ ] scene_draw.js
+- [ ] scene_descriptor.js
+- [ ] read.js
+
+Update Notes:
+- Applied canvas transform to rotate the Y-axis label upright.
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -46,49 +66,59 @@
 
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    const output = document.getElementById('output');
     const baseScene = read(getSceneDescriptor());
+    const output = document.getElementById('output');
 
     const RT = Mat3.translate([3, 1]).mul(Mat3.rotate(Math.PI / 4));
     const TR = Mat3.rotate(Math.PI / 4).mul(Mat3.translate([3, 1]));
-    const ID = Mat3.identity();
 
     function render(transform = null) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Y-axis label upright manually
+      ctx.save();
+      ctx.translate(canvas.width / 2 - 10, canvas.height / 2 - 100);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillStyle = "#ccc";
+      ctx.font = "16px sans-serif";
+      ctx.fillText("y", 0, 0);
+      ctx.restore();
+
       const scene = structuredClone(baseScene);
 
-      if (transform && transform !== ID) {
+      if (transform) {
         scene.forEach(obj => {
           if (obj.shape === 'triangle') {
             obj.transform = transform.mul(obj.transform);
           }
         });
-        output.textContent = transform.toString();
-      } else {
-        output.textContent = 'Original configuration (identity)';
       }
 
       draw(ctx, scene);
+
+      if (transform) {
+        output.textContent = transform.toString();
+      } else {
+        output.textContent = '';
+      }
     }
 
-    document.getElementById('btn-rt').addEventListener('click', () => render(RT));
-    document.getElementById('btn-tr').addEventListener('click', () => render(TR));
-    document.getElementById('btn-both').addEventListener('click', () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const scene1 = structuredClone(baseScene);
-      const scene2 = structuredClone(baseScene);
-      scene1.forEach(obj => {
-        if (obj.shape === 'triangle') obj.transform = RT.mul(obj.transform);
+    // Bind buttons
+    document.getElementById('btn-rt').onclick = () => render(RT);
+    document.getElementById('btn-tr').onclick = () => render(TR);
+    document.getElementById('btn-both').onclick = () => {
+      render(); // base render
+      const scene = structuredClone(baseScene);
+      scene.forEach(obj => {
+        if (obj.shape === 'triangle') {
+          const transformed = TR.mul(obj.transform);
+          obj.transform = transformed;
+        }
       });
-      scene2.forEach(obj => {
-        if (obj.shape === 'triangle') obj.transform = TR.mul(obj.transform);
-        obj.style = { ...obj.style, stroke: '#0ff' }; // alternate stroke for visibility
-      });
-      draw(ctx, [...scene1, ...scene2]);
-      output.textContent = 'RT (default) in white\nTR (comparison) in cyan';
-    });
+      draw(ctx, scene);
+    };
 
-    render();
+    render(); // Default render on load
   </script>
 </body>
 </html>
