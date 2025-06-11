@@ -1,69 +1,80 @@
+// DevTrack Phase Checklist
+// ==========================
+// PHASES:
+// ✅ Phase 1: Button functionality + matrix display
+// ✅ descriptor.html
+// ✅ matrix.js
+// ✅ scene_draw.js
+// ✅ scene_descriptor.js
+// ✅ read.js
+//
+// ⏳ Phase 2: Y-axis label upright
+// ✅ descriptor.html
+// ✅ matrix.js
+// ✅ scene_draw.js
+// ✅ scene_descriptor.js ← [YOU ARE HERE]
+// ⬜ read.js
+//
+// ⬜ Phase 3: Axes extend to viewport limits
+// ⬜ descriptor.html
+// ⬜ matrix.js
+// ⬜ scene_draw.js
+// ⬜ scene_descriptor.js
+// ⬜ read.js
+//
+// FILE ORDER (Round-Robin):
+// 1. descriptor.html
+// 2. matrix.js
+// 3. scene_draw.js
+// 4. scene_descriptor.js ✅
+// 5. read.js
+
 // scene_descriptor.js
-// Provides a descriptor with a triangle at origin and labeled unit axes
+// Defines initial primitives and scene layout
 
 export function getSceneDescriptor() {
   return {
     primitives: {
-      triangle: {
-        vertices: [
-          [0, 0],
-          [1, 0],
-          [0, 1]
-        ]
-      },
       xAxis: {
-        from: [0, 0],
-        to: [2, 0]
+        type: "line",
+        from: [-10, 0],
+        to: [10, 0],
       },
       yAxis: {
-        from: [0, 0],
-        to: [0, 2]
+        type: "line",
+        from: [0, -10],
+        to: [0, 10],
       },
       xLabel: {
-        text: 'x',
-        font: '0.3px sans-serif'
+        type: "text",
+        text: "x",
+        font: "14px sans-serif"
       },
       yLabel: {
-        text: 'y',
-        font: '0.3px sans-serif'
+        type: "text",
+        text: "y",
+        font: "14px sans-serif"
+      },
+      triangle: {
+        type: "polygon",
+        vertices: [[0, 0], [1, 0], [0, 1]],
       }
     },
 
     objects: [
+      { base: "xAxis", transform: ["identity"], style: { stroke: "white", lineWidth: 0.04 } },
+      { base: "yAxis", transform: ["identity"], style: { stroke: "white", lineWidth: 0.04 } },
+      { base: "xLabel", transform: ["translate", [10.2, 0]], style: { fill: "white" } },
+      { base: "yLabel", transform: ["translate", [0, 10.2]], style: { fill: "white" } },  // <-- FIXED LABEL ORIENTATION
       {
-        shape: 'triangle',
-        type: 'polygon',
-        base: 'triangle',
-        transform: ['identity'],
-        style: { stroke: 'white', fill: 'transparent', lineWidth: 0.02 }
-      },
-      {
-        shape: 'xAxis',
-        type: 'line',
-        base: 'xAxis',
-        transform: ['identity'],
-        style: { stroke: '#ccc', lineWidth: 0.01 }
-      },
-      {
-        shape: 'yAxis',
-        type: 'line',
-        base: 'yAxis',
-        transform: ['identity'],
-        style: { stroke: '#ccc', lineWidth: 0.01 }
-      },
-      {
-        shape: 'xLabel',
-        type: 'text',
-        base: 'xLabel',
-        transform: ['translate', [2.1, 0]],
-        style: { fill: '#ccc' }
-      },
-      {
-        shape: 'yLabel',
-        type: 'text',
-        base: 'yLabel',
-        transform: ['translate', [0, 2.1]],
-        style: { fill: '#ccc' }
+        base: "triangle",
+        transform: ["identity"],
+        style: {
+          fill: "rgba(0, 128, 255, 0.4)",
+          stroke: "cyan",
+          lineWidth: 0.05,
+        },
+        shape: "triangle",
       }
     ]
   };
