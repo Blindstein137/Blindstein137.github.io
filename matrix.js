@@ -1,5 +1,5 @@
 // matrix.js
-// Provides 3x3 matrix operations for 2D affine transforms
+// 2×3 matrix class for 2D affine transforms (stored as 6 elements, last row [0 0 1] implied)
 
 export class Mat3 {
   constructor(data) {
@@ -7,61 +7,44 @@ export class Mat3 {
   }
 
   static identity() {
-    return new Mat3([
-      1, 0, 0,
-      0, 1, 0,
-      0, 0, 1
-    ]);
+    return new Mat3([1, 0, 0, 0, 1, 0]);
   }
 
-  static translate([tx, ty]) {
-    return new Mat3([
-      1, 0, tx,
-      0, 1, ty,
-      0, 0, 1
-    ]);
+  static translate([x, y]) {
+    return new Mat3([1, 0, x, 0, 1, y]);
   }
 
   static scale2([sx, sy]) {
-    return new Mat3([
-      sx, 0, 0,
-      0, sy, 0,
-      0, 0, 1
-    ]);
+    return new Mat3([sx, 0, 0, 0, sy, 0]);
   }
 
   static rotate(theta) {
     const c = Math.cos(theta);
     const s = Math.sin(theta);
-    return new Mat3([
-      c, -s, 0,
-      s,  c, 0,
-      0,  0, 1
-    ]);
+    return new Mat3([c, -s, 0, s, c, 0]);
   }
 
-  mul(other) {
+  mul(b) {
     const a = this.data;
-    const b = other.data;
-    const r = new Array(9);
+    const m = b.data;
+    const r = new Array(6);
 
-    for (let row = 0; row < 3; row++) {
-      for (let col = 0; col < 3; col++) {
-        r[3 * row + col] =
-          a[3 * row + 0] * b[0 + col] +
-          a[3 * row + 1] * b[3 + col] +
-          a[3 * row + 2] * b[6 + col];
-      }
-    }
+    r[0] = a[0] * m[0] + a[1] * m[3];
+    r[1] = a[0] * m[1] + a[1] * m[4];
+    r[2] = a[0] * m[2] + a[1] * m[5] + a[2];
+
+    r[3] = a[3] * m[0] + a[4] * m[3];
+    r[4] = a[3] * m[1] + a[4] * m[4];
+    r[5] = a[3] * m[2] + a[4] * m[5] + a[5];
+
     return new Mat3(r);
   }
 
-  toString(precision = 2) {
-    const fmt = x => x.toFixed(precision).padStart(6);
+  toString() {
+    const d = this.data.map(n => n.toFixed(2));
     return (
-      fmt(this.data[0]) + ' ' + fmt(this.data[1]) + ' ' + fmt(this.data[2]) + '\n' +
-      fmt(this.data[3]) + ' ' + fmt(this.data[4]) + ' ' + fmt(this.data[5]) + '\n' +
-      fmt(this.data[6]) + ' ' + fmt(this.data[7]) + ' ' + fmt(this.data[8])
+      `⎡ ${d[0]} ${d[1]} ${d[2]} ⎤\n` +
+      `⎣ ${d[3]} ${d[4]} ${d[5]} ⎦`
     );
   }
 }
