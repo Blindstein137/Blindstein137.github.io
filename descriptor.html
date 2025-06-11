@@ -50,7 +50,7 @@
 
     const baseScene = getSceneDescriptor();
 
-    function render(transformA = [], transformB = [], color = 'red') {
+    function render(transformA = [], transformB = [], color = 'white') {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const instances = read({
@@ -63,22 +63,21 @@
 
       draw(ctx, instances);
 
-      const transformedTriangle = baseScene.primitives.triangle;
-
+      const triangle = baseScene.primitives.triangle;
       const matrixA = buildMatrix(transformA);
       const matrixB = buildMatrix(transformB);
       const composite = matrixA.mul(matrixB);
 
-      const transformedInstance = {
-        type: 'polygon',
-        base: transformedTriangle,
-        transform: composite,
-        style: { stroke: color, fill: 'transparent', lineWidth: 2 }
-      };
+      if (transformA.length || transformB.length) {
+        draw(ctx, [{
+          type: 'polygon',
+          base: triangle,
+          transform: composite,
+          style: { stroke: color, fill: 'transparent', lineWidth: 2 }
+        }]);
 
-      draw(ctx, [transformedInstance]);
-
-      output.textContent = `Transform A:\n${matrixA.toString()}\n\nTransform B:\n${matrixB.toString()}\n\nComposite (B * A):\n${composite.toString()}`;
+        output.textContent = `Transform A:\n${matrixA.toString()}\n\nTransform B:\n${matrixB.toString()}\n\nComposite (B * A):\n${composite.toString()}`;
+      }
     }
 
     function buildMatrix(stack) {
@@ -116,6 +115,9 @@
       render(['translate', [0.58, 0.81]], ['rotate', Math.atan(0.81 / 0.6)], 'green');
       render(['rotate', Math.atan(0.81 / 0.6)], ['translate', [0.58, 0.81]], 'red');
     };
+
+    // Draw base triangle by default
+    render();
   </script>
 </body>
 </html>
