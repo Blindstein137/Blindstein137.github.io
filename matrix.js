@@ -1,5 +1,5 @@
 // matrix.js
-// Mat3 class for 2D affine transformations
+// Provides 3x3 matrix operations for 2D affine transforms
 
 export class Mat3 {
   constructor(data) {
@@ -43,30 +43,25 @@ export class Mat3 {
   mul(other) {
     const a = this.data;
     const b = other.data;
-    const result = [];
+    const r = new Array(9);
+
     for (let row = 0; row < 3; row++) {
       for (let col = 0; col < 3; col++) {
-        result[row * 3 + col] = 0;
-        for (let i = 0; i < 3; i++) {
-          result[row * 3 + col] += a[row * 3 + i] * b[i * 3 + col];
-        }
+        r[3 * row + col] =
+          a[3 * row + 0] * b[0 + col] +
+          a[3 * row + 1] * b[3 + col] +
+          a[3 * row + 2] * b[6 + col];
       }
     }
-    return new Mat3(result);
+    return new Mat3(r);
   }
 
-  applyToVec3([x, y, z]) {
-    const m = this.data;
-    return [
-      m[0]*x + m[1]*y + m[2]*z,
-      m[3]*x + m[4]*y + m[5]*z,
-      m[6]*x + m[7]*y + m[8]*z
-    ];
+  toString(precision = 2) {
+    const fmt = x => x.toFixed(precision).padStart(6);
+    return (
+      fmt(this.data[0]) + ' ' + fmt(this.data[1]) + ' ' + fmt(this.data[2]) + '\n' +
+      fmt(this.data[3]) + ' ' + fmt(this.data[4]) + ' ' + fmt(this.data[5]) + '\n' +
+      fmt(this.data[6]) + ' ' + fmt(this.data[7]) + ' ' + fmt(this.data[8])
+    );
   }
-
-  toString() {
-    return `[
-  ${this.data.slice(0, 3).join(', ')},\n  ${this.data.slice(3, 6).join(', ')},\n  ${this.data.slice(6, 9).join(', ')}
-]`;
-  }
-} // End Mat3
+}
