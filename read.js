@@ -1,3 +1,18 @@
+// DevTrack: Development Progress Tracker
+//
+// === Active Phase ===
+// ☑ Phase 1: Button click functionality and matrix display
+// ☑ Phase 2: Y-axis label orientation correction
+// ☐ Phase 3: Full-screen coordinate axes with labeled tick marks
+// ☐ Phase 4: Matching transformation target coordinates to instructor's values
+//
+// === Files Processed This Phase ===
+// ☑ descriptor.html
+// ☑ matrix.js
+// ☑ scene_draw.js
+// ☑ scene_descriptor.js
+// ☑ read.js
+
 // read.js
 // Converts descriptor data into drawable instance objects with transform matrices
 
