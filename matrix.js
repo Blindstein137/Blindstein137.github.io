@@ -1,5 +1,23 @@
-// matrix.js
-// 2×3 matrix class for 2D affine transforms (stored as 6 elements, last row [0 0 1] implied)
+/* 
+=== DevTrack: File Update Plan Tracker ===
+
+✅ Phase Checklist:
+1. ✔ Button functionality + matrix display
+2. ☐ Y-axis label upright orientation
+3. ☐ Full-screen coordinate axes (with padded auto-scaling)
+4. ☐ Tick marks at regular intervals with numerical labels
+5. ☐ Ensure RT and TR transformations land triangle on same coordinates
+
+🔁 Files to cycle through for current phase:
+- [✔] descriptor.html
+- [✔] matrix.js
+- [ ] scene_draw.js
+- [ ] scene_descriptor.js
+- [ ] read.js
+
+Update Notes:
+- No changes needed for Phase 2; logic is math-only and independent of canvas drawing.
+*/
 
 export class Mat3 {
   constructor(data) {
