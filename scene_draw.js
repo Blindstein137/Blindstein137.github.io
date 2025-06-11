@@ -6,7 +6,7 @@ export function draw(ctx, instances) {
     ctx.save();
 
     const m = obj.transform.data;
-    ctx.transform(m[0], m[1], m[3], m[4], m[6], m[7]);
+    ctx.transform(m[0], m[3], m[1], m[4], m[2], m[5]);
 
     if (obj.style.fill) ctx.fillStyle = obj.style.fill;
     if (obj.style.stroke) ctx.strokeStyle = obj.style.stroke;
