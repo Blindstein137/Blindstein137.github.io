@@ -1,11 +1,31 @@
-// scene_draw.js
-// Draws processed scene instances onto a 2D canvas context with centered +Y-up scaling
+/* 
+=== DevTrack: File Update Plan Tracker ===
+
+✅ Phase Checklist:
+1. ✔ Button functionality + matrix display
+2. ☐ Y-axis label upright orientation
+3. ☐ Full-screen coordinate axes (with padded auto-scaling)
+4. ☐ Tick marks at regular intervals with numerical labels
+5. ☐ Ensure RT and TR transformations land triangle on same coordinates
+
+🔁 Files to cycle through for current phase:
+- [✔] descriptor.html
+- [✔] matrix.js
+- [✔] scene_draw.js
+- [ ] scene_descriptor.js
+- [ ] read.js
+
+Update Notes:
+- Applied canvas Y-axis flip with text orientation correction.
+- Repositioned text labels to prevent upside-down rendering.
+*/
 
 export function draw(ctx, instances) {
-  // Apply viewport shift and scale before drawing any objects
   ctx.save();
-  ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2); // move origin to center
-  ctx.scale(50, -50); // zoom in, flip Y
+
+  // Set origin to center, flip Y for mathematical axis orientation
+  ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2);
+  ctx.scale(50, -50);
 
   for (const obj of instances) {
     ctx.save();
@@ -49,10 +69,11 @@ export function draw(ctx, instances) {
       }
 
       case "text": {
+        ctx.scale(1, -1); // Re-invert text so it’s readable
         ctx.font = obj.base.font || "12px sans-serif";
         ctx.fillStyle = obj.style.fill || ctx.fillStyle;
         const txt = obj.textOverride || obj.base.text;
-        ctx.fillText(txt, 0, 0);
+        ctx.fillText(txt, 0, -0.1); // Small Y-offset tweak for alignment
         break;
       }
     }
@@ -60,5 +81,5 @@ export function draw(ctx, instances) {
     ctx.restore();
   }
 
-  ctx.restore(); // restore entire canvas transform
+  ctx.restore();
 }
