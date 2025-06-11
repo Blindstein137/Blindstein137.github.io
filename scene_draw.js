@@ -1,7 +1,12 @@
 // scene_draw.js
-// Draws processed scene instances onto a 2D canvas context
+// Draws processed scene instances onto a 2D canvas context with centered +Y-up scaling
 
 export function draw(ctx, instances) {
+  // Apply viewport shift and scale before drawing any objects
+  ctx.save();
+  ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2); // move origin to center
+  ctx.scale(50, -50); // zoom in, flip Y
+
   for (const obj of instances) {
     ctx.save();
 
@@ -54,4 +59,6 @@ export function draw(ctx, instances) {
 
     ctx.restore();
   }
+
+  ctx.restore(); // restore entire canvas transform
 }
