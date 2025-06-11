@@ -32,9 +32,9 @@
 <body>
   <canvas id="canvas" width="600" height="600"></canvas>
   <div class="buttons">
-    <button onclick="render(rt)">Rotate then Translate</button>
-    <button onclick="render(tr)">Translate then Rotate</button>
-    <button onclick="render(both)">Both (Final Comparison)</button>
+    <button id="btn-rt">Rotate then Translate</button>
+    <button id="btn-tr">Translate then Rotate</button>
+    <button id="btn-both">Both (Final Comparison)</button>
   </div>
   <pre id="output"></pre>
 
@@ -46,36 +46,47 @@
 
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-    const baseScene = read(getSceneDescriptor());
     const output = document.getElementById('output');
+    const baseScene = read(getSceneDescriptor());
 
     const RT = Mat3.translate([3, 1]).mul(Mat3.rotate(Math.PI / 4));
     const TR = Mat3.rotate(Math.PI / 4).mul(Mat3.translate([3, 1]));
+    const ID = Mat3.identity();
 
     function render(transform = null) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const scene = structuredClone(baseScene);
 
-      if (transform) {
+      if (transform && transform !== ID) {
         scene.forEach(obj => {
           if (obj.shape === 'triangle') {
             obj.transform = transform.mul(obj.transform);
           }
         });
+        output.textContent = transform.toString();
+      } else {
+        output.textContent = 'Original configuration (identity)';
       }
 
       draw(ctx, scene);
-
-      if (transform) {
-        output.textContent = transform.toString();
-      } else {
-        output.textContent = '';
-      }
     }
 
-    const rt = RT;
-    const tr = TR;
-    const both = Mat3.identity(); // Already drawn separately
+    document.getElementById('btn-rt').addEventListener('click', () => render(RT));
+    document.getElementById('btn-tr').addEventListener('click', () => render(TR));
+    document.getElementById('btn-both').addEventListener('click', () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const scene1 = structuredClone(baseScene);
+      const scene2 = structuredClone(baseScene);
+      scene1.forEach(obj => {
+        if (obj.shape === 'triangle') obj.transform = RT.mul(obj.transform);
+      });
+      scene2.forEach(obj => {
+        if (obj.shape === 'triangle') obj.transform = TR.mul(obj.transform);
+        obj.style = { ...obj.style, stroke: '#0ff' }; // alternate stroke for visibility
+      });
+      draw(ctx, [...scene1, ...scene2]);
+      output.textContent = 'RT (default) in white\nTR (comparison) in cyan';
+    });
 
     render();
   </script>
